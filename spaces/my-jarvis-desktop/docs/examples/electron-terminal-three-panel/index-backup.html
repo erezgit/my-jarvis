@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>My Jarvis Desktop - Three Panel Layout</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #1e1e1e;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    
+    .header {
+      background: #2d2d2d;
+      color: white;
+      padding: 10px 20px;
+      border-bottom: 1px solid #444;
+    }
+    
+    .container {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 250px 1fr 400px;
+      overflow: hidden;
+    }
+    
+    .panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    .file-tree-panel {
+      background: #252526;
+      border-right: 1px solid #444;
+      padding: 20px;
+      color: #ccc;
+    }
+    
+    .document-panel {
+      background: #1e1e1e;
+      border-right: 1px solid #444;
+      padding: 20px;
+      color: #ccc;
+      overflow-y: auto;
+    }
+    
+    .terminal-panel {
+      background: #1e1e1e;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .terminal-header {
+      background: #2d2d2d;
+      color: #ccc;
+      padding: 8px 15px;
+      font-size: 12px;
+      border-bottom: 1px solid #444;
+    }
+    
+    #terminal {
+      flex: 1;
+      padding: 10px;
+    }
+    
+    .document-content h2 {
+      margin-top: 0;
+      color: white;
+    }
+    
+    .document-content ul {
+      line-height: 1.8;
+    }
+    
+    .file-item {
+      padding: 8px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin: 2px 0;
+      font-size: 14px;
+    }
+    
+    .file-item:hover {
+      background: #1a1a1a;
+    }
+    
+    .status {
+      background: #007acc;
+      color: white;
+      padding: 5px 20px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1 style="margin: 0; font-size: 18px;">My Jarvis Desktop - Three Panel Layout</h1>
+  </div>
+  
+  <div class="container">
+    <!-- Left Panel: File Tree -->
+    <div class="panel file-tree-panel">
+      <h3 style="margin-top: 0; font-size: 14px; color: #888; margin-bottom: 15px;">EXPLORER</h3>
+      <div class="file-item">📁 my-jarvis</div>
+      <div class="file-item" style="margin-left: 20px;">📄 README.md</div>
+      <div class="file-item" style="margin-left: 20px;">📄 implementation.md</div>
+      <div class="file-item" style="margin-left: 20px;">📁 docs</div>
+      <div class="file-item" style="margin-left: 40px;">📄 architecture.md</div>
+      <div class="file-item" style="margin-left: 20px;">📁 agents</div>
+    </div>
+    
+    <!-- Center Panel: Document View -->
+    <div class="panel document-panel">
+      <div class="document-content">
+        <h2>Welcome to My Jarvis Desktop</h2>
+        <p>This is the three-panel layout for My Jarvis with a working terminal.</p>
+        <ul>
+          <li>✅ <strong>Left Panel:</strong> File tree and explorer</li>
+          <li>✅ <strong>Center Panel:</strong> Document and content view</li>
+          <li>✅ <strong>Right Panel:</strong> Full working terminal</li>
+        </ul>
+        <p>Try these commands in the terminal:</p>
+        <ul>
+          <li><code>ls -la</code> to list files</li>
+          <li><code>Hi Jarvis</code> for AI interaction</li>
+          <li><code>claude --help</code> if Claude CLI is installed</li>
+        </ul>
+      </div>
+    </div>
+    
+    <!-- Right Panel: Terminal -->
+    <div class="panel terminal-panel">
+      <div class="terminal-header">
+        Terminal - <span id="shell-info"></span>
+      </div>
+      <div id="terminal"></div>
+    </div>
+  </div>
+  
+  <div class="status">
+    Status: <span id="status">Initializing...</span>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+  <script>
+    const { ipcRenderer } = require('electron');
+    
+    // Create terminal
+    const term = new Terminal({
+      cursorBlink: true,
+      fontSize: 14,
+      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      theme: {
+        background: '#1e1e1e',
+        foreground: '#d4d4d4'
+      }
+    });
+    
+    // Create fit addon
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    
+    // Open terminal
+    term.open(document.getElementById('terminal'));
+    fitAddon.fit();
+    
+    // Terminal ID
+    const termId = 'term-' + Date.now();
+    
+    // Initialize PTY
+    ipcRenderer.send('terminal-create', termId);
+    
+    // Handle terminal input
+    term.onData(data => {
+      ipcRenderer.send('terminal-data', { id: termId, data });
+    });
+    
+    // Handle terminal output
+    ipcRenderer.on('terminal-data-' + termId, (event, data) => {
+      term.write(data);
+    });
+    
+    // Handle resize
+    window.addEventListener('resize', () => {
+      fitAddon.fit();
+      ipcRenderer.send('terminal-resize', { 
+        id: termId, 
+        cols: term.cols, 
+        rows: term.rows 
+      });
+    });
+    
+    // Handle exit
+    ipcRenderer.on('terminal-exit-' + termId, () => {
+      term.write('\r\n[Process completed]\r\n');
+      document.getElementById('status').textContent = 'Terminal exited';
+    });
+    
+    // Update status
+    document.getElementById('status').textContent = 'Connected';
+    document.getElementById('shell-info').textContent = process.env.SHELL || 'bash';
+    
+    // Focus terminal
+    term.focus();
+  </script>
+</body>
+</html>

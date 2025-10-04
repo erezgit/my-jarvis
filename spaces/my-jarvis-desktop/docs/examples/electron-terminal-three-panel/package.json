@@ -1,0 +1,18 @@
+{
+  "name": "my-jarvis-desktop",
+  "version": "1.0.0",
+  "description": "My Jarvis Desktop - AI-powered knowledge amplification tool with three-panel layout",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "postinstall": "electron-rebuild"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@electron/rebuild": "^3.6.2",
+    "electron": "^33.2.1"
+  },
+  "dependencies": {
+    "node-pty": "^1.0.0"
+  }
+}

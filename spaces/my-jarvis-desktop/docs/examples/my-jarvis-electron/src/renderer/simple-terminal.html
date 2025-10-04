@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>My Jarvis Desktop - Simple Terminal</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0a0a0a;
+      color: #d4d4d4;
+      font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      padding: 10px 20px;
+      background: #0f0f0f;
+      border-bottom: 1px solid #2a2a2a;
+      font-size: 14px;
+      color: #888;
+    }
+
+    .container {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .panel {
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .left-panel {
+      width: 250px;
+      background: #0f0f0f;
+      border-right: 1px solid #2a2a2a;
+    }
+
+    .center-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .document-area {
+      flex: 1;
+      padding: 30px;
+      overflow-y: auto;
+    }
+
+    .terminal-area {
+      height: 400px;
+      background: #000;
+      border-top: 1px solid #2a2a2a;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .terminal-header {
+      padding: 8px 15px;
+      background: #0f0f0f;
+      border-bottom: 1px solid #2a2a2a;
+      font-size: 12px;
+      color: #888;
+    }
+
+    #terminal-output {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    #terminal-input-line {
+      display: flex;
+      padding: 0 10px 10px 10px;
+      align-items: center;
+    }
+
+    .prompt {
+      color: #4a9eff;
+      margin-right: 8px;
+    }
+
+    #terminal-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #d4d4d4;
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .output-line {
+      margin: 2px 0;
+      white-space: pre-wrap;
+    }
+
+    .output-command {
+      color: #4a9eff;
+    }
+
+    .output-response {
+      color: #50fa7b;
+    }
+
+    .output-error {
+      color: #ff5555;
+    }
+
+    .output-jarvis {
+      color: #ff79c6;
+      font-weight: bold;
+    }
+
+    h1 {
+      color: #ffffff;
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+
+    .file-item {
+      padding: 8px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin: 2px 0;
+    }
+
+    .file-item:hover {
+      background: #1a1a1a;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    My Jarvis Desktop - Electron Implementation (Simple Terminal)
+  </div>
+
+  <div class="container">
+    <div class="left-panel panel">
+      <h3 style="font-size: 14px; color: #888; margin-bottom: 15px;">EXPLORER</h3>
+      <div class="file-item">📁 my-jarvis</div>
+      <div class="file-item" style="margin-left: 20px;">📄 README.md</div>
+      <div class="file-item" style="margin-left: 20px;">📁 docs</div>
+      <div class="file-item" style="margin-left: 20px;">📁 agents</div>
+    </div>
+
+    <div class="center-panel">
+      <div class="document-area">
+        <h1>Welcome to My Jarvis Desktop</h1>
+        <p>This is a simplified terminal implementation that works reliably in Electron.</p>
+        <p>Try typing <strong>"Hi Jarvis"</strong> in the terminal below!</p>
+        <br>
+        <p>Features:</p>
+        <ul>
+          <li>✅ Simple, working terminal emulation</li>
+          <li>✅ Executes real shell commands</li>
+          <li>✅ Responds to "Hi Jarvis" command</li>
+          <li>✅ Clean three-panel layout</li>
+          <li>✅ No complex dependencies</li>
+        </ul>
+      </div>
+
+      <div class="terminal-area">
+        <div class="terminal-header">
+          TERMINAL - <span id="shell-info">bash</span>
+        </div>
+        <div id="terminal-output"></div>
+        <div id="terminal-input-line">
+          <span class="prompt">$</span>
+          <input type="text" id="terminal-input" autofocus>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Simple terminal implementation
+    const output = document.getElementById('terminal-output');
+    const input = document.getElementById('terminal-input');
+    let terminalId = null;
+
+    // Initialize terminal
+    async function initTerminal() {
+      addOutput('Welcome to My Jarvis Terminal!', 'output-response');
+      addOutput('Type "Hi Jarvis" to interact with the AI assistant or any command to execute.', 'output-response');
+      addOutput('');
+
+      // Create backend terminal
+      try {
+        const result = await window.electronAPI.terminal.create({ cols: 80, rows: 24 });
+        terminalId = result.id;
+        document.getElementById('shell-info').textContent = `${result.shell} (PID: ${result.pid})`;
+      } catch (error) {
+        addOutput('Error: Failed to create terminal backend', 'output-error');
+      }
+
+      // Listen for terminal output
+      window.electronAPI.terminal.onData((id, data) => {
+        if (id === terminalId) {
+          // Clean ANSI codes for simple display
+          const cleanData = data.replace(/\x1b\[[0-9;]*m/g, '');
+          addOutput(cleanData);
+        }
+      });
+
+      window.electronAPI.terminal.onExit((id) => {
+        if (id === terminalId) {
+          addOutput('Terminal session ended', 'output-error');
+          terminalId = null;
+        }
+      });
+    }
+
+    // Add output to terminal
+    function addOutput(text, className = '') {
+      const line = document.createElement('div');
+      line.className = 'output-line ' + className;
+      line.textContent = text;
+      output.appendChild(line);
+      output.scrollTop = output.scrollHeight;
+    }
+
+    // Handle input
+    input.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        const command = input.value.trim();
+        if (!command) return;
+
+        // Display command
+        addOutput('$ ' + command, 'output-command');
+        input.value = '';
+
+        // Check for Jarvis command
+        if (command.toLowerCase().includes('hi jarvis') || command.toLowerCase().includes('hello jarvis')) {
+          setTimeout(() => {
+            addOutput('🤖 Jarvis: Hello! I\'m ready to help you amplify your capabilities.', 'output-jarvis');
+            addOutput('         I can help you create documents, organize knowledge, and manage your workspace.', 'output-jarvis');
+            addOutput('         What would you like to work on today?', 'output-jarvis');
+            addOutput('');
+          }, 500);
+        } else if (terminalId) {
+          // Send to real terminal
+          window.electronAPI.terminal.write(terminalId, command + '\n');
+        } else {
+          addOutput('Terminal not connected', 'output-error');
+        }
+      }
+    });
+
+    // Initialize on load
+    initTerminal();
+
+    // Keep input focused
+    document.addEventListener('click', () => {
+      input.focus();
+    });
+  </script>
+</body>
+</html>

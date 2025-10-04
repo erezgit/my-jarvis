@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/Users/erezfern/Workspace/my-jarvis/tools/src/jarvis_voice.sh:*)",
+      "Bash(/Users/erezfern/Workspace/jarvis/tools/src/jarvis_voice.sh --voice echo \"I''ll create a new Jarvis documentation file in the docs directory for you. Let me set that up now.\")",
+      "Bash(/Users/erezfern/Workspace/jarvis/tools/src/jarvis_voice.sh:*)",
+      "Bash(npm run build:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npm start)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

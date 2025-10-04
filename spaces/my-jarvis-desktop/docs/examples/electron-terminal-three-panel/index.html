@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>My Jarvis Desktop</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      background: #1e1e1e;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    .header {
+      background: #2d2d2d;
+      color: white;
+      padding: 10px 20px;
+      border-bottom: 1px solid #444;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 18px;
+    }
+    
+    .current-path {
+      font-size: 12px;
+      color: #888;
+    }
+    
+    .container {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 280px 1fr 450px;
+      overflow: hidden;
+      height: calc(100vh - 90px);
+    }
+    
+    .panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    /* File Tree Panel */
+    .file-tree-panel {
+      background: #252526;
+      border-right: 1px solid #444;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    
+    .panel-header {
+      padding: 10px 15px;
+      font-size: 12px;
+      color: #888;
+      text-transform: uppercase;
+      background: #2d2d2d;
+      border-bottom: 1px solid #444;
+      user-select: none;
+    }
+    
+    .panel-header.clickable {
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .panel-header.clickable:hover {
+      background: #333;
+      color: #aaa;
+    }
+    
+    .panel-header.clickable:active {
+      background: #3a3a3a;
+    }
+    
+    .explorer-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: none;
+    }
+    
+    .explorer-icon {
+      font-size: 14px;
+    }
+    
+    .file-tree {
+      padding: 10px 0;
+      font-size: 13px;
+    }
+    
+    .tree-item {
+      display: flex;
+      align-items: center;
+      padding: 3px 10px;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+      color: #ccc;
+    }
+    
+    .tree-item:hover {
+      background: #2a2a2a;
+    }
+    
+    .tree-item.selected {
+      background: #094771;
+      color: white;
+    }
+    
+    .tree-item-icon {
+      margin-right: 5px;
+      width: 16px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    
+    .tree-item-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .tree-children {
+      display: none;
+    }
+    
+    .tree-children.expanded {
+      display: block;
+    }
+    
+    .tree-item.directory > .tree-item-icon::before {
+      content: '▶';
+      font-size: 10px;
+      display: inline-block;
+      transition: transform 0.2s;
+    }
+    
+    .tree-item.directory.expanded > .tree-item-icon::before {
+      transform: rotate(90deg);
+    }
+    
+    /* Document Panel */
+    .document-panel {
+      background: #1e1e1e;
+      border-right: 1px solid #444;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .document-content {
+      flex: 1;
+      padding: 20px;
+      color: #d4d4d4;
+      overflow-y: auto;
+      overflow-x: auto;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    
+    .document-content.empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #666;
+      font-style: italic;
+    }
+    
+    /* Code Preview Styles */
+    .document-content pre {
+      background: #2d2d30;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 15px;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    
+    .document-content code {
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 13px;
+    }
+    
+    /* Markdown Styles */
+    .document-content h1 {
+      color: white;
+      border-bottom: 1px solid #444;
+      padding-bottom: 10px;
+      margin-top: 0;
+    }
+    
+    .document-content h2 {
+      color: #e8e8e8;
+      margin-top: 24px;
+    }
+    
+    .document-content h3 {
+      color: #d4d4d4;
+      margin-top: 20px;
+    }
+    
+    .document-content blockquote {
+      border-left: 3px solid #444;
+      padding-left: 15px;
+      margin-left: 0;
+      color: #aaa;
+      font-style: italic;
+    }
+    
+    .document-content ul, .document-content ol {
+      line-height: 1.8;
+    }
+    
+    .document-content a {
+      color: #4fc3f7;
+      text-decoration: none;
+    }
+    
+    .document-content a:hover {
+      text-decoration: underline;
+    }
+    
+    .document-content table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 15px 0;
+    }
+    
+    .document-content th, .document-content td {
+      border: 1px solid #444;
+      padding: 8px 12px;
+      text-align: left;
+    }
+    
+    .document-content th {
+      background: #2d2d30;
+      color: white;
+    }
+    
+    /* Image Preview */
+    .document-content img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 15px 0;
+    }
+    
+    /* Terminal Panel */
+    .terminal-panel {
+      background: #1e1e1e;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    #terminal {
+      flex: 1;
+      padding: 10px;
+    }
+    
+    /* Status Bar */
+    .status {
+      background: #007acc;
+      color: white;
+      padding: 5px 20px;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    /* Loading Spinner */
+    .loading {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #444;
+      border-top-color: #4fc3f7;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>My Jarvis Desktop</h1>
+    <div class="current-path" id="currentPath">~/</div>
+  </div>
+  
+  <div class="container">
+    <!-- Left Panel: File Tree -->
+    <div class="panel file-tree-panel">
+      <div class="panel-header clickable explorer-header" id="explorerHeader" title="Click to open folder">
+        <span class="explorer-icon">📁</span>
+        <span id="explorerTitle">Explorer</span>
+      </div>
+      <div class="file-tree" id="fileTree">
+        <div class="tree-item" style="padding-left: 20px; color: #666;">
+          Loading...
+        </div>
+      </div>
+    </div>
+    
+    <!-- Center Panel: Document View -->
+    <div class="panel document-panel">
+      <div class="panel-header" id="documentHeader">Welcome</div>
+      <div class="document-content empty" id="documentContent">
+        Select a file to preview
+      </div>
+    </div>
+    
+    <!-- Right Panel: Terminal -->
+    <div class="panel terminal-panel">
+      <div class="panel-header">
+        Terminal - <span id="shell-info"></span>
+      </div>
+      <div id="terminal"></div>
+    </div>
+  </div>
+  
+  <div class="status">
+    <div class="status-item">
+      <span id="status">Ready</span>
+      <span id="loadingSpinner" class="loading" style="display: none;"></span>
+    </div>
+    <div class="status-item">
+      <span id="fileInfo"></span>
+    </div>
+  </div>
+
+  <!-- External Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  
+  <script>
+    // File Explorer State
+    let currentPath = null;
+    let selectedFile = null;
+    let expandedDirs = new Set();
+    
+    // Initialize file explorer
+    async function initFileExplorer() {
+      const homeDir = await window.fileAPI.getHomeDir();
+      await changeDirectory(homeDir);
+    }
+    
+    // Change current directory
+    async function changeDirectory(dirPath) {
+      currentPath = dirPath;
+      
+      // Get user-friendly directory name
+      const homeDir = await window.fileAPI.getHomeDir();
+      let displayName;
+      if (dirPath === homeDir) {
+        displayName = 'Home';
+      } else if (dirPath === '/') {
+        displayName = 'Root';
+      } else {
+        displayName = dirPath.split('/').pop() || dirPath;
+      }
+      
+      document.getElementById('explorerTitle').textContent = displayName;
+      document.getElementById('currentPath').textContent = dirPath.replace(homeDir, '~');
+      expandedDirs.clear(); // Reset expanded state when changing root
+      await loadDirectory(dirPath);
+    }
+    
+    // Handle Explorer header click
+    async function handleExplorerClick() {
+      const selectedDir = await window.fileAPI.selectDirectory();
+      if (selectedDir) {
+        await changeDirectory(selectedDir);
+      }
+    }
+    
+    // Load directory contents
+    async function loadDirectory(dirPath, parentElement = null, level = 0) {
+      const isRoot = !parentElement;
+      const targetElement = isRoot ? document.getElementById('fileTree') : parentElement;
+      
+      if (isRoot) {
+        setStatus('Loading directory...', true);
+        targetElement.innerHTML = '';
+      }
+      
+      try {
+        const items = await window.fileAPI.readDirectory(dirPath);
+        
+        if (items.length === 0 && isRoot) {
+          targetElement.innerHTML = '<div class="tree-item" style="padding-left: 20px; color: #666;">Empty directory</div>';
+          setStatus('Ready');
+          return;
+        }
+        
+        items.forEach(item => {
+          const itemDiv = createTreeItem(item, level);
+          targetElement.appendChild(itemDiv);
+          
+          if (item.isDirectory) {
+            const childrenDiv = document.createElement('div');
+            childrenDiv.className = 'tree-children';
+            childrenDiv.style.paddingLeft = '20px';
+            targetElement.appendChild(childrenDiv);
+            
+            itemDiv.addEventListener('click', async (e) => {
+              e.stopPropagation();
+              await toggleDirectory(item.path, itemDiv, childrenDiv, level + 1);
+            });
+          } else {
+            itemDiv.addEventListener('click', async (e) => {
+              e.stopPropagation();
+              await selectFile(item.path, itemDiv);
+            });
+          }
+        });
+        
+        if (isRoot) {
+          setStatus('Ready');
+        }
+      } catch (error) {
+        console.error('Error loading directory:', error);
+        if (isRoot) {
+          targetElement.innerHTML = '<div class="tree-item" style="padding-left: 20px; color: #f44;">Error loading directory</div>';
+          setStatus('Error loading directory');
+        }
+      }
+    }
+    
+    // Create tree item element
+    function createTreeItem(item, level) {
+      const div = document.createElement('div');
+      div.className = 'tree-item' + (item.isDirectory ? ' directory' : '');
+      div.style.paddingLeft = (20 + level * 20) + 'px';
+      div.dataset.path = item.path;
+      
+      const icon = document.createElement('span');
+      icon.className = 'tree-item-icon';
+      if (!item.isDirectory) {
+        icon.textContent = getFileIcon(item.extension);
+      }
+      
+      const name = document.createElement('span');
+      name.className = 'tree-item-name';
+      name.textContent = item.name;
+      
+      div.appendChild(icon);
+      div.appendChild(name);
+      
+      return div;
+    }
+    
+    // Get file icon based on extension
+    function getFileIcon(extension) {
+      const icons = {
+        '.js': '📜',
+        '.ts': '📘',
+        '.json': '📋',
+        '.html': '🌐',
+        '.css': '🎨',
+        '.md': '📝',
+        '.txt': '📄',
+        '.png': '🖼️',
+        '.jpg': '🖼️',
+        '.jpeg': '🖼️',
+        '.gif': '🖼️',
+        '.svg': '🖼️',
+        '.pdf': '📕',
+        '.zip': '📦',
+        '.py': '🐍',
+        '.sh': '⚡',
+        '.yml': '⚙️',
+        '.yaml': '⚙️'
+      };
+      return icons[extension.toLowerCase()] || '📄';
+    }
+    
+    // Toggle directory expansion
+    async function toggleDirectory(dirPath, itemDiv, childrenDiv, level) {
+      if (expandedDirs.has(dirPath)) {
+        expandedDirs.delete(dirPath);
+        itemDiv.classList.remove('expanded');
+        childrenDiv.classList.remove('expanded');
+        childrenDiv.innerHTML = '';
+      } else {
+        expandedDirs.add(dirPath);
+        itemDiv.classList.add('expanded');
+        childrenDiv.classList.add('expanded');
+        childrenDiv.innerHTML = '<div class="tree-item" style="padding-left: ' + (20 + level * 20) + 'px; color: #666;">Loading...</div>';
+        await loadDirectory(dirPath, childrenDiv, level);
+      }
+    }
+    
+    // Select and preview file
+    async function selectFile(filePath, itemDiv) {
+      // Update selection UI
+      document.querySelectorAll('.tree-item.selected').forEach(el => {
+        el.classList.remove('selected');
+      });
+      itemDiv.classList.add('selected');
+      
+      selectedFile = filePath;
+      const fileName = filePath.split('/').pop();
+      document.getElementById('documentHeader').textContent = fileName;
+      document.getElementById('fileInfo').textContent = fileName;
+      
+      setStatus('Loading file...', true);
+      
+      try {
+        const fileData = await window.fileAPI.readFile(filePath);
+        
+        if (fileData.error) {
+          showError('Error loading file: ' + fileData.error);
+          return;
+        }
+        
+        await renderFileContent(fileData);
+        setStatus('Ready');
+      } catch (error) {
+        console.error('Error reading file:', error);
+        showError('Failed to load file');
+        setStatus('Error');
+      }
+    }
+    
+    // Render file content based on type
+    async function renderFileContent(fileData) {
+      const contentDiv = document.getElementById('documentContent');
+      contentDiv.classList.remove('empty');
+      
+      const extension = fileData.extension.toLowerCase();
+      
+      // Image files
+      if (['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp'].includes(extension)) {
+        contentDiv.innerHTML = `<img src="file://${fileData.path}" alt="${fileData.name}">`;
+        return;
+      }
+      
+      // Markdown files
+      if (extension === '.md') {
+        const html = marked.parse(fileData.content);
+        contentDiv.innerHTML = html;
+        // Apply syntax highlighting to code blocks
+        contentDiv.querySelectorAll('pre code').forEach(block => {
+          Prism.highlightElement(block);
+        });
+        return;
+      }
+      
+      // Code files
+      const codeExtensions = ['.js', '.ts', '.jsx', '.tsx', '.py', '.java', '.c', '.cpp', '.cs', '.php', '.rb', '.go', '.rs', '.sh', '.bash', '.json', '.xml', '.html', '.css', '.scss', '.less', '.yml', '.yaml'];
+      if (codeExtensions.includes(extension)) {
+        const language = getLanguageFromExtension(extension);
+        const highlighted = Prism.highlight(fileData.content, Prism.languages[language] || Prism.languages.plaintext, language);
+        contentDiv.innerHTML = `<pre><code class="language-${language}">${highlighted}</code></pre>`;
+        return;
+      }
+      
+      // Plain text fallback
+      contentDiv.innerHTML = `<pre>${escapeHtml(fileData.content)}</pre>`;
+    }
+    
+    // Get Prism language from file extension
+    function getLanguageFromExtension(ext) {
+      const langMap = {
+        '.js': 'javascript',
+        '.jsx': 'javascript',
+        '.ts': 'typescript',
+        '.tsx': 'typescript',
+        '.py': 'python',
+        '.json': 'json',
+        '.html': 'html',
+        '.css': 'css',
+        '.md': 'markdown',
+        '.sh': 'bash',
+        '.bash': 'bash',
+        '.yml': 'yaml',
+        '.yaml': 'yaml'
+      };
+      return langMap[ext] || 'plaintext';
+    }
+    
+    // Escape HTML for safe display
+    function escapeHtml(text) {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return text.replace(/[&<>"']/g, m => map[m]);
+    }
+    
+    // Show error message
+    function showError(message) {
+      const contentDiv = document.getElementById('documentContent');
+      contentDiv.classList.add('empty');
+      contentDiv.innerHTML = `<div style="color: #f44;">${message}</div>`;
+    }
+    
+    // Set status message
+    function setStatus(message, loading = false) {
+      document.getElementById('status').textContent = message;
+      document.getElementById('loadingSpinner').style.display = loading ? 'inline-block' : 'none';
+    }
+    
+    // Initialize Terminal
+    const term = new Terminal({
+      cursorBlink: true,
+      fontSize: 14,
+      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      theme: {
+        background: '#1e1e1e',
+        foreground: '#d4d4d4'
+      }
+    });
+    
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    
+    term.open(document.getElementById('terminal'));
+    fitAddon.fit();
+    
+    const termId = 'term-' + Date.now();
+    
+    // Initialize PTY using the new API
+    window.electronAPI.send('terminal-create', termId);
+    
+    term.onData(data => {
+      window.electronAPI.send('terminal-data', { id: termId, data });
+    });
+    
+    window.electronAPI.on('terminal-data-' + termId, (data) => {
+      term.write(data);
+    });
+    
+    window.addEventListener('resize', () => {
+      fitAddon.fit();
+      window.electronAPI.send('terminal-resize', { 
+        id: termId, 
+        cols: term.cols, 
+        rows: term.rows 
+      });
+    });
+    
+    window.electronAPI.on('terminal-exit-' + termId, () => {
+      term.write('\r\n[Process completed]\r\n');
+      setStatus('Terminal exited');
+    });
+    
+    // Update shell info
+    document.getElementById('shell-info').textContent = 'bash';
+    
+    // Initialize everything when ready
+    window.addEventListener('DOMContentLoaded', async () => {
+      // Add click handler for Explorer header
+      document.getElementById('explorerHeader').addEventListener('click', handleExplorerClick);
+      
+      await initFileExplorer();
+      term.focus();
+    });
+  </script>
+</body>
+</html>

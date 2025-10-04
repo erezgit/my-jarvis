@@ -1,0 +1,102 @@
+# Growth Agent
+
+## Overview
+
+The Growth Agent is an AI-powered strategic advisor designed to accelerate business growth through data-driven insights and actionable recommendations.
+
+<AgentStatus status="active" tasks={3} />
+
+## Core Capabilities
+
+### 📊 Market Analysis
+- Real-time competitive intelligence
+- Industry trend identification
+- Customer segment analysis
+- Market opportunity scoring
+
+### 🎯 Strategic Planning
+- Goal setting and OKR management
+- Resource optimization
+- Risk assessment and mitigation
+- Growth roadmap development
+
+### 📈 Performance Tracking
+
+<div className="grid grid-cols-3 gap-4 my-6">
+  <MetricCard title="Revenue Growth" value="24.5" change={12.3} unit="%" />
+  <MetricCard title="Customer Acquisition" value="1,234" change={-5.2} />
+  <MetricCard title="Market Share" value="18.7" change={3.1} unit="%" />
+</div>
+
+## Current Mission
+
+The Growth Agent is currently focused on Q4 2025 expansion strategies:
+
+<TaskProgress tasks={[
+  { name: "Complete market research report", done: true },
+  { name: "Identify top 10 growth opportunities", done: true },
+  { name: "Develop partnership strategy", done: false },
+  { name: "Create investor pitch deck", done: false },
+  { name: "Launch pilot program", done: false }
+]} />
+
+## Integration Points
+
+### Data Sources
+- **CRM Systems**: Salesforce, HubSpot
+- **Analytics**: Google Analytics, Mixpanel
+- **Financial**: QuickBooks, Stripe
+- **Marketing**: Meta Ads, Google Ads
+
+### Output Channels
+- Weekly strategy reports
+- Real-time dashboards
+- Slack notifications
+- Email summaries
+
+## Configuration
+
+```javascript
+// Growth Agent Configuration
+const growthAgent = {
+  mode: 'aggressive',
+  focusAreas: ['acquisition', 'retention', 'expansion'],
+  kpis: {
+    primary: 'revenue_growth',
+    secondary: ['cac', 'ltv', 'churn_rate']
+  },
+  reporting: {
+    frequency: 'weekly',
+    format: 'dashboard',
+    recipients: ['leadership', 'product', 'marketing']
+  }
+};
+```
+
+## Recent Insights
+
+### 🔍 Key Finding
+The agent identified a 35% increase in conversion rates when implementing personalized onboarding flows, leading to a projected $2.4M annual revenue increase.
+
+### 💡 Recommendation
+> "Focus on enterprise segment expansion. Analysis shows 3x higher LTV with only 1.5x CAC compared to SMB segment."
+
+## Performance History
+
+| Month | Revenue Growth | New Customers | Churn Rate |
+|-------|---------------|---------------|------------|
+| Oct 2025 | +18.5% | 342 | 2.1% |
+| Sep 2025 | +22.3% | 298 | 2.4% |
+| Aug 2025 | +15.7% | 276 | 2.8% |
+| Jul 2025 | +19.2% | 312 | 2.2% |
+
+## Agent Commands
+
+- `@growth analyze [market/segment/competitor]` - Run specific analysis
+- `@growth forecast [metric] [timeframe]` - Generate predictions
+- `@growth optimize [channel/campaign]` - Optimization recommendations
+- `@growth report [weekly/monthly/quarterly]` - Generate reports
+
+---
+
+*Growth Agent v2.3.1 | Last Updated: 2025-09-09*

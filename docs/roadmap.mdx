@@ -1,0 +1,143 @@
+# My Jarvis Desktop - Product Roadmap
+
+This roadmap shows our current focus areas for bringing My Jarvis Desktop to initial users.
+
+<TicketStack tickets={[
+  {
+    id: "041",
+    title: "Workspace Switching & Onboarding System",
+    status: "planned",
+    confidence: 7,
+    productRequirements: `Enable users to switch between different workspaces (projects) seamlessly and provide a guided onboarding experience for new users.
+
+Key User Stories:
+- As a new user, I want a clear onboarding flow that teaches me how to use My Jarvis Desktop
+- As a user, I want to switch between different projects/workspaces easily
+- As a user, I want each workspace to have its own context and configuration
+
+Success Criteria:
+- New users complete onboarding and understand core features
+- Users can create and switch between workspaces
+- Each workspace maintains separate context and files`,
+    architecture: `Workspace Management:
+- Workspace registry in user config (~/.my-jarvis/workspaces.json)
+- Each workspace has isolated directory structure
+- Workspace switcher in UI (dropdown or sidebar)
+- Context reset on workspace switch
+
+Onboarding Flow:
+- Create dedicated onboarding workspace template
+- Interactive tutorial steps stored as MDX files
+- Progress tracking using TicketStack components
+- Setup wizard for API keys (Claude, OpenAI)
+
+File Structure:
+~/.my-jarvis/
+  ├── workspaces.json
+  └── workspaces/
+      ├── onboarding/
+      ├── my-jarvis-desktop/
+      └── [user-workspaces]/`,
+    implementation: [
+      { name: "Design workspace data model and storage", done: false },
+      { name: "Create workspace switcher UI component", done: false },
+      { name: "Implement workspace creation and switching logic", done: false },
+      { name: "Build onboarding workspace template", done: false },
+      { name: "Create interactive onboarding MDX content", done: false },
+      { name: "Add API key setup wizard", done: false },
+      { name: "Test complete onboarding flow", done: false },
+    ],
+    nextAction: "Design workspace data model and create workspaces.json schema"
+  },
+  {
+    id: "042",
+    title: "Enhanced MDX Components for Planning",
+    status: "active",
+    confidence: 8,
+    productRequirements: `Build rich interactive components that make planning, tracking, and visualizing work more intuitive and beautiful.
+
+Key User Stories:
+- As a user, I want to see my work timeline visually
+- As a user, I want a calendar view of upcoming tasks
+- As a user, I want dashboard views that fit on one screen
+
+Components Needed:
+- TicketStack ✅ (just built!)
+- Calendar - work planning calendar
+- Timeline - sequential progress visualization
+- StatusDashboard - single-screen project status`,
+    architecture: `Component Library Structure:
+app/components/FilePreview/mdx/mdx-components/
+  ├── TicketStack.tsx ✅
+  ├── Calendar.tsx (planned)
+  ├── Timeline.tsx (planned)
+  └── StatusDashboard.tsx (planned)
+
+Design Principles:
+- Theme-aware (light/dark mode support)
+- Single-screen fit (no scrolling for dashboards)
+- Clean, minimal aesthetic matching app design
+- Interactive where beneficial (collapsible sections)
+
+Data Format:
+- All components accept JSON data props
+- Can be used inline in MDX files
+- Support both static and dynamic data`,
+    implementation: [
+      { name: "Create TicketStack component", done: true },
+      { name: "Export and register TicketStack in MDXRenderer", done: true },
+      { name: "Create sample roadmap.mdx file", done: true },
+      { name: "Design Calendar component for work planning", done: false },
+      { name: "Design Timeline component for progress tracking", done: false },
+      { name: "Create StatusDashboard component", done: false },
+      { name: "Test all components in real documentation", done: false },
+    ],
+    nextAction: "Test TicketStack component in this roadmap file, then iterate on design"
+  },
+  {
+    id: "040",
+    title: "User Message Styling & UI Polish",
+    status: "completed",
+    confidence: 9,
+    productRequirements: `Make the chat interface clean, beautiful, and easy to read with proper visual hierarchy.
+
+Key Changes:
+- User messages with green background for visibility
+- Consistent font sizing (14px)
+- Clean button design with neutral colors
+- Proper spacing between UI elements`,
+    architecture: `UI Design System:
+- Neutral color palette (grays, minimal color accents)
+- Green (#059669) for user messages
+- Sky blue for links and headings
+- Transparent backgrounds where possible
+- 14px base font size for consistency
+
+Component Updates:
+- ChatPage.tsx - spacing and layout
+- UserMessage.tsx - green background
+- SettingsButton/HistoryButton - minimal design
+- TokenContextBar - increased padding
+- ChatInput - font size consistency`,
+    implementation: [
+      { name: "Update user message styling with green background", done: true },
+      { name: "Standardize font sizes across components", done: true },
+      { name: "Simplify button designs (remove backgrounds/borders)", done: true },
+      { name: "Adjust spacing between header and content", done: true },
+      { name: "Increase TokenContextBar padding", done: true },
+      { name: "Test in both light and dark modes", done: true },
+      { name: "Build and test in production", done: true },
+    ],
+    nextAction: "Complete - all UI polish implemented in v1.10.0"
+  },
+]} />
+
+## Next Steps
+
+After testing the TicketStack component (you're looking at it right now!), we'll decide whether to:
+
+1. **Focus on onboarding** - Build the workspace switching and new user experience
+2. **Expand MDX components** - Add Calendar and Timeline for better planning
+3. **Ship to early users** - Package and distribute to Lilach, Yonatan, Nier, Arielle
+
+The TicketStack component itself is a perfect example of building the tools we need for ourselves first, then using them for users.

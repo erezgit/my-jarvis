@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Electron Terminal Example with xterm.js</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #1e1e1e;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    
+    .header {
+      background: #2d2d2d;
+      color: white;
+      padding: 10px 20px;
+      border-bottom: 1px solid #444;
+    }
+    
+    .container {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+    
+    .sidebar {
+      width: 200px;
+      background: #252526;
+      border-right: 1px solid #444;
+      padding: 20px;
+      color: #ccc;
+    }
+    
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .terminal-header {
+      background: #2d2d2d;
+      color: #ccc;
+      padding: 8px 15px;
+      font-size: 12px;
+      border-bottom: 1px solid #444;
+    }
+    
+    #terminal {
+      flex: 1;
+      padding: 10px;
+    }
+    
+    .info {
+      padding: 20px;
+      color: #ccc;
+      background: #1e1e1e;
+      border-bottom: 1px solid #444;
+    }
+    
+    .info h2 {
+      margin-top: 0;
+      color: white;
+    }
+    
+    .info ul {
+      line-height: 1.8;
+    }
+    
+    .status {
+      background: #007acc;
+      color: white;
+      padding: 5px 20px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1 style="margin: 0; font-size: 18px;">Electron Terminal Example - Full xterm.js Integration</h1>
+  </div>
+  
+  <div class="container">
+    <div class="sidebar">
+      <h3 style="margin-top: 0;">Terminal Features</h3>
+      <ul style="padding-left: 20px; font-size: 14px;">
+        <li>Full PTY support</li>
+        <li>Color support</li>
+        <li>Cursor control</li>
+        <li>Interactive programs</li>
+        <li>Claude CLI ready</li>
+      </ul>
+    </div>
+    
+    <div class="main">
+      <div class="info">
+        <h2>Real Terminal with xterm.js</h2>
+        <p>This is a proper terminal emulator that can run any command, including interactive programs:</p>
+        <ul>
+          <li>Try: <code>ls -la</code> to list files</li>
+          <li>Try: <code>vim test.txt</code> to edit files</li>
+          <li>Try: <code>claude --help</code> if you have Claude CLI installed</li>
+          <li>Try: <code>ssh</code> to connect to servers</li>
+        </ul>
+      </div>
+      
+      <div class="terminal-header">
+        Terminal - <span id="shell-info"></span>
+      </div>
+      
+      <div id="terminal"></div>
+    </div>
+  </div>
+  
+  <div class="status">
+    Status: <span id="status">Initializing...</span>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+  <script>
+    const { ipcRenderer } = require('electron');
+    
+    // Create terminal
+    const term = new Terminal({
+      cursorBlink: true,
+      fontSize: 14,
+      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      theme: {
+        background: '#1e1e1e',
+        foreground: '#d4d4d4'
+      }
+    });
+    
+    // Create fit addon
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    
+    // Open terminal
+    term.open(document.getElementById('terminal'));
+    fitAddon.fit();
+    
+    // Terminal ID
+    const termId = 'term-' + Date.now();
+    
+    // Initialize PTY
+    ipcRenderer.send('terminal-create', termId);
+    
+    // Handle terminal input
+    term.onData(data => {
+      ipcRenderer.send('terminal-data', { id: termId, data });
+    });
+    
+    // Handle terminal output
+    ipcRenderer.on('terminal-data-' + termId, (event, data) => {
+      term.write(data);
+    });
+    
+    // Handle resize
+    window.addEventListener('resize', () => {
+      fitAddon.fit();
+      ipcRenderer.send('terminal-resize', { 
+        id: termId, 
+        cols: term.cols, 
+        rows: term.rows 
+      });
+    });
+    
+    // Handle exit
+    ipcRenderer.on('terminal-exit-' + termId, () => {
+      term.write('\r\n[Process completed]\r\n');
+      document.getElementById('status').textContent = 'Terminal exited';
+    });
+    
+    // Update status
+    document.getElementById('status').textContent = 'Connected';
+    document.getElementById('shell-info').textContent = process.env.SHELL || 'bash';
+    
+    // Focus terminal
+    term.focus();
+  </script>
+</body>
+</html>
