@@ -51,13 +51,22 @@ My Jarvis Desktop is a production-ready AI-powered Electron desktop application 
    - **No Auto-Play**: User-controlled playback only (Ticket #039)
    - **UnifiedMessageProcessor Integration**: Automatic VoiceMessage creation from Bash tool results
 
-6. **Three-Panel IDE Layout Architecture**
-   - **Responsive Layout System**: Desktop (3-panel) and Mobile (single-panel) layouts
+6. **Three-Panel IDE Layout Architecture** (Tickets #055-056, Completed 2025-10-12)
+   - **Unified Chat Architecture**: Single ChatPage instance shared between desktop and mobile layouts (eliminates duplication)
+   - **Responsive Layout System**: Desktop (3-panel) and Mobile (single-panel) layouts with automatic switching
    - **File Tree Panel**: VirtualizedFileTree with directory browsing (20% default width)
    - **File Preview Panel**: Rich Markdown/MDX preview with syntax highlighting (50% default width)
    - **Chat Panel**: ChatPage with Claude AI integration (30% default width)
-   - **Resizable Panels**: react-resizable-panels for user-customizable layout
-   - **Mobile Responsive**: Automatic layout switching based on screen size
+   - **Resizable Panels**: react-resizable-panels for user-customizable desktop layout
+   - **Mobile Layout Architecture**:
+     - **Dynamic Viewport Height**: Uses `h-dvh` (not `h-screen`) for proper mobile browser bar handling
+     - **Flex-Based Scrolling**: Flex container hierarchy enables internal message scrolling
+     - **iOS Safari Compatibility**: Viewport meta `maximum-scale=1` + 16px input font-size prevents auto-zoom
+     - **No Parent Height Constraints**: Removed `html, body, #root { height: 100%; }` to avoid viewport unit conflicts
+     - **Panel Container**: `flex-1 relative overflow-hidden` (no `min-h-0` which broke all panels)
+     - **Sticky Navigation**: Top bar with `sticky top-0 z-10` stays fixed during scrolling
+     - **Panel Wrappers**: Each panel (`h-full flex flex-col`) with proper flex context for children
+   - **ChatHeader Component**: Reusable header with view/panel switchers for both desktop and mobile
    - **Mode System**: Jarvis mode (clean, minimal) vs Developer mode (technical details)
 
 7. **Token Usage Tracking** (Ticket #029)
@@ -89,12 +98,14 @@ My Jarvis Desktop is a production-ready AI-powered Electron desktop application 
    - **Send Button**: Neutral-600/700 (minimal visual emphasis)
    - **Page Background**: neutral-50 for lighter, cleaner appearance
 
-10. **Workspace Management System** (Tickets #042-043)
+10. **Workspace Management System** (Tickets #042-043, #053-054)
    - **SettingsContext Integration**: workingDirectory as persistent user preference
    - **Multi-Workspace Support**: Switch between My Jarvis and My Jarvis Onboarding environments
    - **Reactive File Tree**: Automatic reload when workspace changes
    - **Persistent Selection**: Workspace choice saved to localStorage
    - **Clean Architecture**: Single source of truth in SettingsContext, no prop drilling
+   - **Initialization Voice Fix** (Ticket #054): Removed duplicate voice announcements on startup
+   - **Directory Alignment** (Ticket #053): Consistent workspace path handling across desktop/cloud
 
 11. **Deployment Architecture**
    - **Desktop**: Electron app with embedded claude-webui-server
@@ -235,6 +246,84 @@ The application implements a clean workspace management system through SettingsC
 - Automatic persistence across app restarts
 - Reactive updates without manual refresh logic
 - Consistent pattern for adding workspace-related features
+
+### Mobile Layout Architecture (Tickets #055-056, October 2025)
+
+The unified mobile layout architecture eliminates code duplication and provides a production-ready mobile experience through careful viewport management and iOS Safari compatibility.
+
+**Unified Chat Pattern**:
+1. **Single ChatPage Instance**
+   - One ChatPage component shared between DesktopLayout and MobileLayout
+   - Created once in ResponsiveLayout with useMemo
+   - Passed as `chatInterface` prop to both layouts
+   - No conditional rendering or mobile-specific logic in ChatPage
+   - Eliminates duplicate code and ensures consistency
+
+2. **Responsive Layout Switching**
+   ```tsx
+   ResponsiveLayout (React fragment wrapper)
+   ├── DesktopLayout (lg+)
+   │   └── ChatPage in flex-1 panel
+   └── MobileLayout (<lg)
+       └── ChatPage in h-full panel wrapper
+   ```
+
+**Mobile Viewport Architecture**:
+1. **Dynamic Viewport Height (`h-dvh`)**
+   - Uses `h-dvh` (dynamic viewport height) NOT `h-screen` (100vh)
+   - Automatically recalculates when mobile browser UI shows/hides
+   - Prevents ~150px overflow caused by static 100vh calculations
+   - Critical for proper mobile browser bar handling
+
+2. **Parent Constraint Removal**
+   - Removed `html, body, #root { height: 100%; }` from global.css
+   - Parent height constraints conflict with h-dvh/h-screen calculations
+   - Clean viewport calculation from actual browser dimensions
+   - Matches my-jarvis-frontend reference architecture
+
+3. **Container Hierarchy**
+   ```tsx
+   MobileLayout (h-dvh flex flex-col)
+   ├── Nav Bar (sticky top-0 z-10)
+   └── Panel Container (flex-1 relative overflow-hidden)
+       └── Transition Wrapper (h-full)
+           └── Panel Wrapper (h-full flex flex-col)
+               └── ChatPage (h-full)
+                   ├── TokenBar (fixed height)
+                   ├── ChatMessages (flex-1 overflow-y-scroll)
+                   └── ChatInput (fixed height)
+   ```
+
+4. **Flex-Based Scrolling**
+   - `flex-1` on panel container fills remaining space after nav
+   - `overflow-hidden` prevents page-level scrolling
+   - `h-full flex flex-col` on panel wrapper establishes flex context
+   - `flex-1 overflow-y-scroll` on ChatMessages enables internal scrolling
+
+**iOS Safari Compatibility**:
+1. **Auto-Zoom Prevention**
+   - Viewport meta: `maximum-scale=1.0, user-scalable=no`
+   - Input font-size: `text-base` (16px) not `text-sm` (14px)
+   - iOS Safari auto-zooms when input < 16px, breaking layout
+
+2. **Keyboard Handling**
+   - h-dvh automatically adjusts for keyboard appearance
+   - No manual vh calculations or resize listeners needed
+   - ChatInput stays fixed at bottom when keyboard shows
+
+**Anti-Patterns Avoided**:
+- ❌ Double height wrappers (ResponsiveLayout + MobileLayout both with h-screen)
+- ❌ min-h-0 on panel container (breaks all panels, not just chat)
+- ❌ Removing h-full from ChatPage before fixing parent constraints
+- ❌ Using h-screen (static) instead of h-dvh (dynamic)
+- ❌ Parent height constraints (html/body/root with height:100%)
+
+**Testing Results**:
+- ✅ No auto-zoom on input focus (iOS Safari)
+- ✅ Messages scroll internally, page doesn't scroll
+- ✅ Entry field always visible, even with many messages
+- ✅ Proper viewport height with/without browser bars
+- ✅ Works across all three panels (files, preview, chat)
 
 ### Environment Isolation Architecture (Critical Solution)
 
@@ -421,10 +510,11 @@ The voice integration demonstrates the power of the UnifiedMessageProcessor arch
 
 #### **Core Application Components (Three-Panel IDE)**
 - **App.tsx**: Main application wrapper with SettingsProvider and TokenUsageProvider
-- **ResponsiveLayout.tsx**: Adaptive layout with Jarvis/Developer mode switching
+- **ResponsiveLayout.tsx**: Adaptive layout switcher (React fragment, no height wrapper)
 - **DesktopLayout.tsx**: Three-panel desktop interface with resizable panels
-- **MobileLayout.tsx**: Single-panel mobile interface for responsive design
-- **ChatPage.tsx**: AI chat interface with TokenContextBar integration
+- **MobileLayout.tsx**: Single-panel mobile interface (`h-dvh` root, flex-based scrolling)
+- **ChatPage.tsx**: Unified AI chat interface shared between desktop and mobile (Ticket #056)
+- **ChatHeader.tsx**: Reusable header component for view/panel switching (Ticket #056)
 - **VirtualizedFileTree.tsx**: High-performance file browser with virtualization
 - **FilePreview.tsx**: Rich Markdown/MDX preview with syntax highlighting
 - **ProjectSelector.tsx**: Working directory selection and configuration
@@ -903,8 +993,18 @@ The application demonstrates how claude-code-webui can be extended beyond simple
 - ✅ **Voice Message Refinements (Ticket #039)**: User-controlled playback, no auto-play
 - ✅ **UI/UX Polish (Ticket #040)**: Comprehensive design system with neutral palette and sans-serif fonts
 - ✅ **TicketStack Component (Ticket #041)**: Visual ticket planning with collapsible cards
-- ✅ **Workspace Management (Tickets #042-043)**: Multi-workspace support with SettingsContext architecture
+- ✅ **Workspace Management (Tickets #042-043, #053-054)**: Multi-workspace support with SettingsContext architecture
+- ✅ **Mobile Layout Architecture (Tickets #055-056)**: Unified ChatPage, h-dvh viewport, iOS Safari compatibility
 - ✅ **Jarvis Mode Enhancement**: Clean, minimal interface for non-technical users
+
+**Mobile Layout Implementation (Tickets #055-056, October 2025):**
+- ✅ **Unified Chat Architecture**: Single ChatPage instance eliminates desktop/mobile duplication
+- ✅ **Dynamic Viewport**: h-dvh viewport units properly handle mobile browser UI (100vh causes overflow)
+- ✅ **iOS Safari Compatibility**: Viewport meta `maximum-scale=1` + 16px inputs prevent auto-zoom
+- ✅ **Flex-Based Scrolling**: Proper container hierarchy enables internal message scrolling
+- ✅ **No Parent Constraints**: Removed global CSS height:100% to avoid viewport unit conflicts
+- ✅ **ChatHeader Component**: Reusable header for both desktop and mobile layouts
+- ✅ **Comprehensive Testing**: 3-hour iterative troubleshooting with 11 fixes documented
 - ✅ **UnifiedMessageProcessor Extensions**: Token extraction and tracking integration
 
 ---
