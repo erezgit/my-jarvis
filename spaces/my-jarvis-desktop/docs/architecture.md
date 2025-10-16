@@ -683,7 +683,855 @@ my-jarvis-desktop/                  # Electron app with embedded server
 └── claude-code-webui frontend     # React-based chat interface
 ```
 
-### 2. My Jarvis Cloud (Web Deployment)
+### 2. Fly.io Cloud Deployment (Production) ✅
+
+**Successfully deployed at**: https://my-jarvis-desktop.fly.dev
+
+The application has been successfully deployed to Fly.io using a programmatic approach. This deployment provides cloud-based access to the My Jarvis Desktop application without requiring local installation.
+
+#### **Deployment Architecture**
+
+```
+Fly.io Machine (San Jose, sjc)
+├── Machine ID: 78175e3c947468
+├── IPv4: 169.155.59.92
+├── IPv6: 2a09:8280:1::a6:49c:0
+├── Internal Port: 10000
+├── Memory: 512MB
+├── CPU: 1 shared
+└── Volume: 1GB workspace
+```
+
+#### **Successful Deployment Steps** (October 15, 2025)
+
+The deployment was accomplished using Python with Fly.io's GraphQL API via curl. Here's what worked:
+
+**1. Install flyctl (Optional for verification)**
+```bash
+curl -L https://fly.io/install.sh | sh
+# Installed to: /Users/erezfern/.fly/bin/flyctl
+```
+
+**2. Set Environment Variable**
+```bash
+export FLY_API_TOKEN="your-fly-api-token"
+```
+
+**3. Verify Token Works**
+```bash
+python3 -c "
+import json, urllib.request, ssl
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
+token = 'FlyV1 ...'
+req = urllib.request.Request(
+    'https://api.fly.io/graphql',
+    data=json.dumps({'query': '{viewer{id email}}'}).encode('utf-8'),
+    headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+)
+with urllib.request.urlopen(req, context=ctx) as response:
+    print(json.dumps(json.loads(response.read()), indent=2))
+"
+```
+
+**4. Allocate Public IP Addresses** (Critical Step)
+
+The app was already deployed but wasn't accessible due to missing public IP addresses. Allocating both IPv4 and IPv6 resolved all DNS and accessibility issues:
+
+```bash
+# Allocate IPv4
+python3 -c "
+import json, urllib.request, ssl
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
+data = {
+    'query': 'mutation(\$input: AllocateIPAddressInput!) { allocateIpAddress(input: \$input) { ipAddress { id address type } } }',
+    'variables': {'input': {'appId': 'my-jarvis-desktop', 'type': 'v4'}}
+}
+req = urllib.request.Request(
+    'https://api.fly.io/graphql',
+    data=json.dumps(data).encode('utf-8'),
+    headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+)
+with urllib.request.urlopen(req, context=ctx) as response:
+    print(json.dumps(json.loads(response.read()), indent=2))
+"
+# Result: IPv4 169.155.59.92 allocated
+
+# Allocate IPv6
+python3 -c "
+import json, urllib.request, ssl
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
+data = {
+    'query': 'mutation(\$input: AllocateIPAddressInput!) { allocateIpAddress(input: \$input) { ipAddress { id address type } } }',
+    'variables': {'input': {'appId': 'my-jarvis-desktop', 'type': 'v6'}}
+}
+req = urllib.request.Request(
+    'https://api.fly.io/graphql',
+    data=json.dumps(data).encode('utf-8'),
+    headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+)
+with urllib.request.urlopen(req, context=ctx) as response:
+    print(json.dumps(json.loads(response.read()), indent=2))
+"
+# Result: IPv6 2a09:8280:1::a6:49c:0 allocated
+```
+
+**5. Verify Deployment**
+```bash
+curl -I https://my-jarvis-desktop.fly.dev
+# HTTP/2 200 ✅
+```
+
+#### **Multi-User Deployment Strategy - Complete Guide**
+
+This section provides a **complete, step-by-step guide** for deploying separate My Jarvis Desktop instances for different users. Each user gets their own isolated Fly.io app with a unique subdomain (e.g., `my-jarvis-lilah.fly.dev`).
+
+**✅ Verified Working** - This process was successfully tested on October 15, 2025 with Lilah's instance.
+
+---
+
+### **Prerequisites**
+
+1. **Fly.io API Token** - Get from dashboard or `flyctl auth token`
+2. **Organization ID** - Find with GraphQL query (see below)
+3. **Docker Image** - Existing deployed image from registry.fly.io
+4. **Python 3** - For running deployment scripts
+
+---
+
+### **Step-by-Step Deployment Process**
+
+#### **Step 1: Get Your Organization ID**
+
+Before creating apps, you need your Fly.io organization ID:
+
+```python
+import json, urllib.request, ssl
+
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
+token = 'FlyV1 ...'  # Your Fly.io API token
+
+org_query = {'query': '{ viewer { organizations { nodes { id name slug } } } }'}
+
+req = urllib.request.Request(
+    'https://api.fly.io/graphql',
+    data=json.dumps(org_query).encode('utf-8'),
+    headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+)
+
+with urllib.request.urlopen(req, context=ctx) as response:
+    result = json.loads(response.read())
+    orgs = result['data']['viewer']['organizations']['nodes']
+    print(f"Organization ID: {orgs[0]['id']}")
+    # Example: zQpLKVXNGapwgH61jXMLyk5zbLcDez2YK
+```
+
+#### **Step 2: Find the Docker Image Tag**
+
+Get the exact Docker image tag from your working instance:
+
+```python
+query = {
+    'query': '''
+    {
+      app(name: "my-jarvis-desktop") {
+        machines {
+          nodes {
+            config {
+              image
+            }
+          }
+        }
+      }
+    }
+    '''
+}
+
+req = urllib.request.Request(
+    'https://api.fly.io/graphql',
+    data=json.dumps(query).encode('utf-8'),
+    headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+)
+
+with urllib.request.urlopen(req, context=ctx) as response:
+    result = json.loads(response.read())
+    image = result['data']['app']['machines']['nodes'][0]['config']['image']
+    print(f"Docker Image: {image}")
+    # Example: my-jarvis-desktop:deployment-01K7JFWZY278ZS59P4J3SN0W91
+```
+
+---
+
+### **Complete Deployment Script for New User**
+
+Here's the **complete, tested script** that creates a fully working user instance:
+
+```python
+#!/usr/bin/env python3
+"""
+Deploy a new My Jarvis Desktop instance for a user on Fly.io
+Usage: python3 deploy_user.py lilah FlyV1...
+"""
+
+import json
+import urllib.request
+import ssl
+import sys
+import time
+
+def deploy_user_instance(username, fly_token, org_id, docker_image, region='sjc'):
+    """
+    Deploy a complete My Jarvis Desktop instance for a user
+
+    Args:
+        username: User's name (becomes part of subdomain)
+        fly_token: Fly.io API token
+        org_id: Fly.io organization ID
+        docker_image: Full Docker image path (e.g., registry.fly.io/my-jarvis-desktop:deployment-...)
+        region: Fly.io region code (default: sjc = San Jose)
+
+    Returns:
+        dict with deployment details
+    """
+
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    app_name = f"my-jarvis-{username}"
+
+    print(f"🚀 Deploying My Jarvis Desktop for {username}...")
+    print(f"   App name: {app_name}")
+    print(f"   Region: {region}")
+    print()
+
+    # Step 1: Create Fly.io app
+    print("Step 1/6: Creating Fly.io app...")
+    create_app_data = {
+        'query': 'mutation($input: CreateAppInput!) { createApp(input: $input) { app { id name } } }',
+        'variables': {
+            'input': {
+                'name': app_name,
+                'organizationId': org_id
+            }
+        }
+    }
+
+    req = urllib.request.Request(
+        'https://api.fly.io/graphql',
+        data=json.dumps(create_app_data).encode('utf-8'),
+        headers={'Authorization': f'Bearer {fly_token}', 'Content-Type': 'application/json'}
+    )
+
+    with urllib.request.urlopen(req, context=ctx) as response:
+        result = json.loads(response.read())
+        if 'errors' in result:
+            raise Exception(f"Failed to create app: {result['errors']}")
+        print(f"   ✅ App created: {app_name}")
+
+    # Step 2: Create volume for workspace
+    print("Step 2/6: Creating workspace volume...")
+    volume_config = {
+        'name': f'{username}_workspace',
+        'size_gb': 1,
+        'region': region
+    }
+
+    req = urllib.request.Request(
+        'https://api.machines.dev/v1/apps/{}/volumes'.format(app_name),
+        data=json.dumps(volume_config).encode('utf-8'),
+        headers={'Authorization': f'Bearer {fly_token}', 'Content-Type': 'application/json'},
+        method='POST'
+    )
+
+    with urllib.request.urlopen(req, context=ctx) as response:
+        volume = json.loads(response.read())
+        volume_id = volume['id']
+        print(f"   ✅ Volume created: {volume_id}")
+
+    # Step 3: Create machine with COMPLETE configuration
+    print("Step 3/6: Creating machine with complete configuration...")
+
+    # ⚠️ CRITICAL: This configuration must match the working instance exactly
+    machine_config = {
+        'name': f'{username}-machine',
+        'region': region,
+        'config': {
+            'image': f'registry.fly.io/{docker_image}',
+            'env': {
+                'USER_ID': username,
+                'PORT': '10000',
+                'NODE_ENV': 'production',
+                'WORKSPACE_DIR': '/workspace',
+                'PRIMARY_REGION': region,
+                'TERMINAL_WS_PORT': '3001'
+            },
+            'guest': {
+                'cpu_kind': 'shared',
+                'cpus': 1,
+                'memory_mb': 512  # ⚠️ CRITICAL: Must be 512MB, not 256MB
+            },
+            'services': [
+                {
+                    'protocol': 'tcp',
+                    'internal_port': 10000,
+                    'autostop': 'suspend',
+                    'autostart': True,
+                    'min_machines_running': 0,
+                    'ports': [
+                        {
+                            'port': 80,
+                            'handlers': ['http'],
+                            'force_https': True
+                        },
+                        {
+                            'port': 443,
+                            'handlers': ['http', 'tls']
+                        }
+                    ],
+                    'concurrency': {
+                        'type': 'connections',
+                        'hard_limit': 25,
+                        'soft_limit': 20
+                    }
+                },
+                # ⚠️ CRITICAL: WebSocket service for terminal - DO NOT OMIT
+                {
+                    'protocol': 'tcp',
+                    'internal_port': 3001,
+                    'ports': [
+                        {'port': 3001}
+                    ]
+                }
+            ],
+            'mounts': [{
+                'volume': volume_id,
+                'path': '/workspace'
+            }],
+            'restart': {
+                'policy': 'on-failure'
+            }
+        }
+    }
+
+    req = urllib.request.Request(
+        f'https://api.machines.dev/v1/apps/{app_name}/machines',
+        data=json.dumps(machine_config).encode('utf-8'),
+        headers={'Authorization': f'Bearer {fly_token}', 'Content-Type': 'application/json'},
+        method='POST'
+    )
+
+    with urllib.request.urlopen(req, context=ctx) as response:
+        machine = json.loads(response.read())
+        machine_id = machine['id']
+        print(f"   ✅ Machine created: {machine_id}")
+
+    # Step 4: Allocate IPv4 address
+    print("Step 4/6: Allocating IPv4 address...")
+    ipv4_data = {
+        'query': 'mutation($input: AllocateIPAddressInput!) { allocateIpAddress(input: $input) { ipAddress { id address type } } }',
+        'variables': {'input': {'appId': app_name, 'type': 'v4'}}
+    }
+
+    req = urllib.request.Request(
+        'https://api.fly.io/graphql',
+        data=json.dumps(ipv4_data).encode('utf-8'),
+        headers={'Authorization': f'Bearer {fly_token}', 'Content-Type': 'application/json'}
+    )
+
+    with urllib.request.urlopen(req, context=ctx) as response:
+        result = json.loads(response.read())
+        ipv4 = result['data']['allocateIpAddress']['ipAddress']['address']
+        print(f"   ✅ IPv4 allocated: {ipv4}")
+
+    # Step 5: Allocate IPv6 address
+    print("Step 5/6: Allocating IPv6 address...")
+    ipv6_data = {
+        'query': 'mutation($input: AllocateIPAddressInput!) { allocateIpAddress(input: $input) { ipAddress { id address type } } }',
+        'variables': {'input': {'appId': app_name, 'type': 'v6'}}
+    }
+
+    req = urllib.request.Request(
+        'https://api.fly.io/graphql',
+        data=json.dumps(ipv6_data).encode('utf-8'),
+        headers={'Authorization': f'Bearer {fly_token}', 'Content-Type': 'application/json'}
+    )
+
+    with urllib.request.urlopen(req, context=ctx) as response:
+        result = json.loads(response.read())
+        ipv6 = result['data']['allocateIpAddress']['ipAddress']['address']
+        print(f"   ✅ IPv6 allocated: {ipv6}")
+
+    # Step 6: Start machine and verify
+    print("Step 6/6: Starting machine...")
+    req = urllib.request.Request(
+        f'https://api.machines.dev/v1/apps/{app_name}/machines/{machine_id}/start',
+        data=b'',
+        headers={'Authorization': f'Bearer {fly_token}', 'Content-Type': 'application/json'},
+        method='POST'
+    )
+
+    with urllib.request.urlopen(req, context=ctx) as response:
+        json.loads(response.read())
+        print(f"   ✅ Machine started")
+
+    print()
+    print("⏳ Waiting 10 seconds for application to boot...")
+    time.sleep(10)
+
+    # Verify deployment
+    url = f"https://{app_name}.fly.dev"
+    print(f"🎉 Deployment complete!")
+    print()
+    print(f"   URL: {url}")
+    print(f"   IPv4: {ipv4}")
+    print(f"   IPv6: {ipv6}")
+    print(f"   Machine ID: {machine_id}")
+    print(f"   Volume ID: {volume_id}")
+    print()
+
+    return {
+        'url': url,
+        'app_name': app_name,
+        'machine_id': machine_id,
+        'volume_id': volume_id,
+        'ipv4': ipv4,
+        'ipv6': ipv6
+    }
+
+if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        print("Usage: python3 deploy_user.py <username> <fly_token> [org_id] [docker_image] [region]")
+        sys.exit(1)
+
+    username = sys.argv[1]
+    fly_token = sys.argv[2]
+    org_id = sys.argv[3] if len(sys.argv) > 3 else 'zQpLKVXNGapwgH61jXMLyk5zbLcDez2YK'
+    docker_image = sys.argv[4] if len(sys.argv) > 4 else 'my-jarvis-desktop:deployment-01K7JFWZY278ZS59P4J3SN0W91'
+    region = sys.argv[5] if len(sys.argv) > 5 else 'sjc'
+
+    result = deploy_user_instance(username, fly_token, org_id, docker_image, region)
+    print(f"Test your deployment: curl -I {result['url']}")
+```
+
+---
+
+### **Critical Configuration Details** ⚠️
+
+These settings are **ESSENTIAL** for the app to work. Missing any of these will cause failures:
+
+#### **1. Memory: 512MB (NOT 256MB)**
+```python
+'guest': {
+    'memory_mb': 512  # ⚠️ CRITICAL: 256MB is insufficient
+}
+```
+**Why**: The application needs 512MB to run properly. With 256MB, the app starts but fails with HTTP 502/503 errors.
+
+#### **2. WebSocket Service for Terminal (Port 3001)**
+```python
+'services': [
+    # HTTP/HTTPS service
+    {...},
+    # ⚠️ CRITICAL: WebSocket service - DO NOT OMIT
+    {
+        'protocol': 'tcp',
+        'internal_port': 3001,
+        'ports': [{'port': 3001}]
+    }
+]
+```
+**Why**: Without this service, the terminal functionality won't work. This was the main issue with Lilah's first deployment.
+
+#### **3. Autostop and Autostart Configuration**
+```python
+'services': [{
+    'autostop': 'suspend',
+    'autostart': True,
+    'min_machines_running': 0,
+    'concurrency': {
+        'type': 'connections',
+        'hard_limit': 25,
+        'soft_limit': 20
+    }
+}]
+```
+**Why**: Enables Fly.io's automatic scaling. Machines suspend when idle and auto-start on incoming requests.
+
+#### **4. Complete Environment Variables**
+```python
+'env': {
+    'USER_ID': username,          # User identification
+    'PORT': '10000',              # Internal HTTP port
+    'NODE_ENV': 'production',     # Production mode
+    'WORKSPACE_DIR': '/workspace', # Workspace mount path
+    'PRIMARY_REGION': region,     # Region identifier
+    'TERMINAL_WS_PORT': '3001'    # WebSocket port
+}
+```
+
+---
+
+### **Troubleshooting Common Issues**
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| HTTP 502 Bad Gateway | App not responding | Check memory (needs 512MB), verify services config |
+| HTTP 503 Service Unavailable | Machine starting up | Wait 10-30 seconds for boot |
+| DNS not resolving | Missing IP addresses | Ensure both IPv4 and IPv6 are allocated |
+| Terminal not working | Missing port 3001 service | Add WebSocket service configuration |
+| App crashes on startup | Insufficient memory | Increase memory_mb to 512 |
+
+---
+
+### **Verification Steps**
+
+After deployment, verify everything works:
+
+```bash
+# 1. Check DNS resolution
+curl -I https://my-jarvis-USERNAME.fly.dev
+# Should return: HTTP/2 200
+
+# 2. Check machine status
+python3 -c "
+import json, urllib.request, ssl
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
+req = urllib.request.Request(
+    'https://api.machines.dev/v1/apps/my-jarvis-USERNAME/machines',
+    headers={'Authorization': 'Bearer FlyV1...'}
+)
+with urllib.request.urlopen(req, context=ctx) as r:
+    print(json.dumps(json.loads(r.read()), indent=2))
+"
+
+# 3. Check IP addresses
+# Should see both IPv4 and IPv6 allocated
+```
+
+---
+
+### **Quick Reference: Creating a New User**
+
+**Single-line command**:
+```bash
+python3 deploy_user.py lilah "FlyV1..." "your-org-id" "my-jarvis-desktop:deployment-..." "sjc"
+```
+
+**What you need**:
+1. Username (becomes subdomain)
+2. Fly.io API token
+3. Organization ID
+4. Docker image tag from working instance
+5. Region code (optional, default: sjc)
+
+**What you get**:
+- Unique URL: `https://my-jarvis-USERNAME.fly.dev`
+- Isolated machine with 512MB RAM
+- 1GB workspace volume
+- Public IPv4 and IPv6 addresses
+- Complete terminal and HTTP functionality
+
+---
+
+### **Updating Existing Deployments** ⚠️
+
+**CRITICAL**: When updating code for existing user instances, you MUST use the correct update procedure to avoid creating duplicate machines and volumes.
+
+#### **The Problem** (Learned October 16, 2025)
+
+When using `fly deploy` without flags, Fly.io:
+1. ✅ Builds new Docker image successfully
+2. ❌ Creates a **NEW machine** instead of updating existing one
+3. ❌ Creates a **NEW volume** (1GB) leaving old volume orphaned
+4. ❌ Results in **duplicate resources** and **increased costs**
+
+**Example**: Updating Lilah's instance created:
+- 2 machines (old: `lilah-machine`, new: `long-paper-7608`)
+- 2 volumes (old: `lilah_workspace`, new: `workspace_data`)
+- Total storage showing as 2GB instead of 1GB
+
+#### **The Solution: Use `--update-only` Flag**
+
+To update existing deployments **without creating new resources**:
+
+```bash
+# Navigate to project directory
+cd /path/to/my-jarvis-desktop
+
+# Authenticate with Fly.io
+fly auth login
+
+# Update existing machines ONLY (preserves volumes)
+fly deploy --app my-jarvis-USERNAME --update-only
+
+# Alternative: Update specific machine by ID
+fly machine update MACHINE_ID --app my-jarvis-USERNAME --image registry.fly.io/my-jarvis-USERNAME:deployment-XXXXX
+```
+
+#### **Complete Update Procedure**
+
+**Step 1: Make Code Changes**
+```bash
+# 1. Update version number in package.json and SettingsModal.tsx
+# 2. Commit changes to git
+git add .
+git commit -m "feat: Update to version X.Y.Z"
+git push
+```
+
+**Step 2: Deploy Update**
+```bash
+# Authenticate with Fly.io
+fly auth login
+
+# Deploy update (builds new image and updates existing machines)
+fly deploy --app my-jarvis-USERNAME --update-only
+
+# Monitor deployment
+fly logs --app my-jarvis-USERNAME
+```
+
+**Step 3: Verify Update**
+```bash
+# Check machine status
+fly status --app my-jarvis-USERNAME
+
+# Verify only one machine exists
+fly machines list --app my-jarvis-USERNAME
+
+# Verify only one volume exists
+fly volumes list --app my-jarvis-USERNAME
+
+# Test deployment
+curl -I https://my-jarvis-USERNAME.fly.dev
+```
+
+#### **Cleanup After Incorrect Deployment**
+
+If you accidentally created duplicate machines/volumes:
+
+```bash
+# 1. List all machines
+fly machines list --app my-jarvis-USERNAME
+
+# 2. Stop old machine
+fly machine stop OLD_MACHINE_ID --app my-jarvis-USERNAME
+
+# 3. Verify new machine is working
+curl -I https://my-jarvis-USERNAME.fly.dev
+
+# 4. Destroy old machine (permanently)
+fly machine destroy OLD_MACHINE_ID --app my-jarvis-USERNAME --force
+
+# 5. List volumes
+fly volumes list --app my-jarvis-USERNAME
+
+# 6. Delete orphaned volume (if no important data)
+fly volumes destroy OLD_VOLUME_ID --app my-jarvis-USERNAME
+```
+
+#### **Key Flags Explained**
+
+| Flag | Purpose | When to Use |
+|------|---------|-------------|
+| `--update-only` | Update existing machines, don't create new ones | **Always use for updates** |
+| `--detach` | Return immediately, don't wait for deployment | Background deployments |
+| `--image` | Specify exact Docker image | When updating specific machine |
+| `--force` | Skip confirmation prompts | Automated scripts |
+
+#### **Best Practices**
+
+1. **Always use `--update-only`** when deploying code changes to existing instances
+2. **Monitor resources**: Check machines and volumes after each deployment
+3. **Version tracking**: Update version number in code before deploying
+4. **Test first**: Deploy to your own instance before updating user instances
+5. **User data**: Volumes persist across updates, but back up important data
+6. **Verify single resources**: Ensure only one machine and one volume per app
+
+#### **Troubleshooting Update Issues**
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Duplicate machines | Used `fly deploy` without `--update-only` | Stop and destroy old machine |
+| Duplicate volumes | New machine created new volume | Destroy orphaned volume |
+| Storage costs doubled | Two volumes allocated | Clean up old volume |
+| App not responding | Multiple machines competing | Stop all but one machine |
+| Data loss concern | Unsure which volume has data | Don't delete volumes, contact support |
+
+---
+
+### **Example: Creating Lilah's Instance**
+
+This is the actual process that was successfully completed on October 15, 2025:
+
+**Creating a New User Instance (Old incomplete approach - for reference only):**
+
+```bash
+# 1. Create a new Fly.io app (unique name required)
+python3 -c "
+import json, urllib.request, ssl
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
+token = 'FlyV1 ...'
+data = {
+    'query': 'mutation(\$input: CreateAppInput!) { createApp(input: \$input) { app { id name organization { slug } } } }',
+    'variables': {
+        'input': {
+            'name': 'my-jarvis-desktop-lilac',
+            'organizationId': 'your-org-id'
+        }
+    }
+}
+req = urllib.request.Request(
+    'https://api.fly.io/graphql',
+    data=json.dumps(data).encode('utf-8'),
+    headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+)
+with urllib.request.urlopen(req, context=ctx) as response:
+    result = json.loads(response.read())
+    print(json.dumps(result, indent=2))
+"
+
+# 2. Deploy using the same Docker image
+# (Assuming you already built and pushed the image to registry.fly.io)
+python3 -c "
+import json, urllib.request, ssl
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
+token = 'FlyV1 ...'
+data = {
+    'query': 'mutation(\$input: CreateMachineInput!) { createMachine(input: \$input) { machine { id state } } }',
+    'variables': {
+        'input': {
+            'appId': 'my-jarvis-desktop-lilac',
+            'config': {
+                'image': 'registry.fly.io/my-jarvis-desktop:latest',
+                'services': [{
+                    'ports': [
+                        {'port': 80, 'handlers': ['http']},
+                        {'port': 443, 'handlers': ['tls', 'http']}
+                    ],
+                    'protocol': 'tcp',
+                    'internal_port': 10000
+                }],
+                'env': {
+                    'USER_ID': 'lilac'
+                }
+            }
+        }
+    }
+}
+req = urllib.request.Request(
+    'https://api.fly.io/graphql',
+    data=json.dumps(data).encode('utf-8'),
+    headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+)
+with urllib.request.urlopen(req, context=ctx) as response:
+    result = json.loads(response.read())
+    print(json.dumps(result, indent=2))
+"
+
+# 3. Allocate IP addresses for the new app
+# (Same process as above, but with appId: 'my-jarvis-desktop-lilac')
+
+# 4. Access at: https://my-jarvis-desktop-lilac.fly.dev
+```
+
+**Key Concepts for Multi-User Deployment:**
+
+1. **One App Per User**: Each user gets a separate Fly.io app with unique subdomain
+2. **Shared Docker Image**: All apps can use the same Docker image from the registry
+3. **Environment Variables**: Customize each instance with USER_ID or other env vars
+4. **Resource Isolation**: Each app has its own machine, volume, and IP addresses
+5. **Independent Scaling**: Each user instance can be scaled independently
+
+**Automated User Provisioning Script:**
+
+```python
+# deploy_user_instance.py
+import json
+import urllib.request
+import ssl
+
+def create_user_instance(username, fly_token, org_id):
+    """Create a new My Jarvis Desktop instance for a user"""
+
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    app_name = f"my-jarvis-desktop-{username}"
+
+    # 1. Create app
+    create_app_query = {
+        'query': 'mutation($input: CreateAppInput!) { createApp(input: $input) { app { id name } } }',
+        'variables': {'input': {'name': app_name, 'organizationId': org_id}}
+    }
+
+    # 2. Create machine with Docker image
+    create_machine_query = {
+        'query': 'mutation($input: CreateMachineInput!) { createMachine(input: $input) { machine { id state } } }',
+        'variables': {
+            'input': {
+                'appId': app_name,
+                'config': {
+                    'image': 'registry.fly.io/my-jarvis-desktop:latest',
+                    'services': [{
+                        'ports': [
+                            {'port': 80, 'handlers': ['http']},
+                            {'port': 443, 'handlers': ['tls', 'http']}
+                        ],
+                        'protocol': 'tcp',
+                        'internal_port': 10000
+                    }],
+                    'env': {'USER_ID': username}
+                }
+            }
+        }
+    }
+
+    # 3. Allocate IPv4
+    allocate_ipv4_query = {
+        'query': 'mutation($input: AllocateIPAddressInput!) { allocateIpAddress(input: $input) { ipAddress { address } } }',
+        'variables': {'input': {'appId': app_name, 'type': 'v4'}}
+    }
+
+    # 4. Allocate IPv6
+    allocate_ipv6_query = {
+        'query': 'mutation($input: AllocateIPAddressInput!) { allocateIpAddress(input: $input) { ipAddress { address } } }',
+        'variables': {'input': {'appId': app_name, 'type': 'v6'}}
+    }
+
+    # Execute all steps...
+    # (Implementation left as exercise)
+
+    return f"https://{app_name}.fly.dev"
+
+# Usage:
+# url = create_user_instance("lilac", "FlyV1...", "your-org-id")
+# print(f"User instance deployed at: {url}")
+```
+
+### 3. My Jarvis Cloud (Alternative Web Deployment)
 The claude-code-webui frontend can be deployed as a standalone web application:
 
 ```
@@ -700,11 +1548,12 @@ my-jarvis-cloud/                    # Docker-based cloud deployment
 - **Scalable Architecture**: Docker containers for easy scaling
 - **Consistent Experience**: Identical UI and features across platforms
 
-### 3. Hybrid Deployment
+### 4. Hybrid Deployment
 Users can choose their preferred deployment method:
 - **Desktop**: Full-featured with local processing and file access
-- **Cloud**: Accessible anywhere with internet connection
-- **Both**: Sync conversations and settings across platforms
+- **Fly.io Cloud**: Production-ready cloud deployment with automatic scaling
+- **Custom Cloud**: Docker-based deployment on any cloud provider
+- **Multi-Instance**: Separate cloud instances per user for complete isolation
 
 ## Key Features
 
