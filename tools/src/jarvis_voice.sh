@@ -3,8 +3,8 @@
 # This script standardizes the process of generating voice responses from text
 
 # Load environment variables from .env file if it exists
-if [ -f "/Users/erezfern/Workspace/my-jarvis/tools/config/.env" ]; then
-  source "/Users/erezfern/Workspace/my-jarvis/tools/config/.env"
+if [ -f "/home/user/my-jarvis/tools/config/.env" ]; then
+  source "/home/user/my-jarvis/tools/config/.env"
 fi
 
 # Set variables with defaults
@@ -12,7 +12,7 @@ VOICE="nova"
 MODEL="tts-1"
 FORMAT="mp3"
 SPEED="1.0"
-OUTPUT_DIR="/Users/erezfern/Workspace/my-jarvis/tools/voice"
+OUTPUT_DIR="/home/user/my-jarvis/tools/voice"
 MAX_LENGTH="1000"
 
 # Function to show usage information
@@ -87,7 +87,7 @@ if [ $# -eq 0 ]; then
 fi
 
 # Build the command
-CMD="python3 /Users/erezfern/Workspace/my-jarvis/tools/src/cli/auto_jarvis_voice.py"
+CMD="python3 /home/user/my-jarvis/tools/src/cli/auto_jarvis_voice.py"
 
 # Add text (joining all remaining arguments with spaces)
 TEXT="$*"
@@ -103,7 +103,7 @@ CMD="$CMD --output-dir $OUTPUT_DIR"
 
 # Make sure we have the API key from environment
 if [ -z "$OPENAI_API_KEY" ]; then
-  ENV_FILE="/Users/erezfern/Workspace/my-jarvis/tools/config/.env"
+  ENV_FILE="/home/user/my-jarvis/tools/config/.env"
   
   # Try to load API key from .env file again (in case it was modified)
   if [ -f "$ENV_FILE" ]; then
