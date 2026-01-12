@@ -1,12 +1,19 @@
-# Generated voice files
-tools/voice/
+# Voice output files (generated mp3s)
+.claude/skills/voice/output/
 
-# Python virtual environments
-tools/venv_docs/
+# Local Claude settings
+.claude.json
+.claude/debug/
+.claude/projects/
+.claude/settings.local.json
+.claude/statsig/
+.claude/todos/
+
+# Python
 **/__pycache__/
 **/*.pyc
 
-# Node modules
+# Node
 **/node_modules/
 
 # Build artifacts
@@ -22,12 +29,6 @@ tools/venv_docs/
 .vscode/
 .idea/
 
-# Example projects and tickets research (keep tickets implementation plans)
-spaces/my-jarvis-desktop/tickets/*/example-projects/
-
-# Nested git repositories in example projects
-spaces/my-jarvis-desktop/tickets/**/.git/
-
 # Log files
 *.log
 
@@ -35,4 +36,6 @@ spaces/my-jarvis-desktop/tickets/**/.git/
 .env
 *.env
 !sample.env
+
+# Subprojects (separate repos)
 my-jarvis/
