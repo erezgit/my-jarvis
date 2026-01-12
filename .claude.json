@@ -1,0 +1,33 @@
+{
+  "allowedTools": [
+    "Read",
+    "Write",
+    "Edit",
+    "Glob",
+    "Grep",
+    "Bash",
+    "Task",
+    "WebFetch",
+    "WebSearch",
+    "mcp__vibe_kanban__*",
+    "mcp__rube__*",
+    "mcp__playwright__*"
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(mkdir *)",
+      "Bash(rm *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(curl *)",
+      "Bash(sqlite3 *)",
+      "Bash(afplay *)",
+      "Bash(python3 *)",
+      "Bash(npm *)",
+      "Bash(gh *)"
+    ]
+  }
+}

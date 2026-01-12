@@ -2,7 +2,6 @@
 .claude/skills/voice/output/
 
 # Local Claude settings
-.claude.json
 .claude/debug/
 .claude/projects/
 .claude/settings.local.json
